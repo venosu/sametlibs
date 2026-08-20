@@ -195,9 +195,9 @@ do
                     end
                 })
 
-                local murderalljewsandhangallniggers=SectionLeft:Label("jasdasd")
+                local Hello=SectionLeft:Label("jasdasd")
                 for i=1,5 do
-                    murderalljewsandhangallniggers:Colorpicker({
+                    Hello:Colorpicker({
                         Flag = "Colorpicker"..i,
                         Default = Color3.fromRGB(math.random(1, 255), math.random(1, 255), math.random(1, 255)),
                         Alpha = 0,
