@@ -15,6 +15,7 @@ local Library do
     local RunService = game:GetService("RunService")
     local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
     local TweenService = game:GetService("TweenService")
+	local TeleportService = game:GetService("TeleportService")
     --local Lighting = game:GetService("Lighting")
 
     gethui = gethui or function()
@@ -5154,6 +5155,10 @@ local Library do
                         Library:ChangeTheme("Dark Accent", Value)
                     end
                 })
+
+                MenuSection:Button({Name = "Re-join Server", Callback = function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+                end})
 
                 MenuSection:Button({Name = "Unload", Callback = function()
                     Library:Unload()
