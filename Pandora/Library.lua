@@ -1766,72 +1766,58 @@ local Library do
                 return Keybind.Key, Keybind.Mode, Keybind.Toggled
             end
 
+            local function IsInvalid(k)
+                if not k then return true end
+                local str = tostring(k)
+                return str == "" or str == "None" or str == "[None]" or str == "Unknown" or str == "[Unknown]" or StringFind(str, "Unknown") ~= nil or StringFind(str, "Backspace") ~= nil
+            end
+
             function Keybind:Set(Key)
-                if StringFind(tostring(Key), "Enum") then 
-                    if Key.Name == "Backspace" or Key.Name == "Unknown" then
-                        Keybind.Key = "None"
-                        Keybind.Value = "[None]"
-                        Items["KeyButton"].Instance.Text = "[None]"
-                    else
-                        Keybind.Key = tostring(Key)
+                local TargetKey = Key
+                local TargetMode = Keybind.Mode ~= "" and Keybind.Mode or "Toggle"
 
-                        local KeyString = Keys[Keybind.Key] or StringGSub(Key.Name, "Enum.", "") or "None"
-                        local TextToDisplay = "["..StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "").."]"
-
-                        Keybind.Value = TextToDisplay
-                        Items["KeyButton"].Instance.Text = TextToDisplay
-                    end
-
-                    Library.Flags[Keybind.Flag] = {
-                        Mode = Keybind.Mode,
-                        Key = Keybind.Key,
-                        Toggled = Keybind.Toggled
-                    }
-
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
-                    end
-
-                    Update()
-                elseif type(Key) == "table" then
-                    local RealKey = (Key.Key == "Backspace" or Key.Key == "Unknown" or Key.Key == "Enum.KeyCode.Unknown" or Key.Key == "None") and "None" or Key.Key
-                    Keybind.Key = (RealKey == "None") and "None" or tostring(Key.Key)
-
-                    if Key.Mode then
-                        Modes[Key.Mode]:Toggle()
-                        Keybind:SetMode(Key.Mode)
-                    else
-                        Modes["Toggle"]:Toggle()
-                        Keybind:SetMode("Toggle")
-                    end
-
-                    if Keybind.Key == "None" then
-                        Keybind.Value = "[None]"
-                        Items["KeyButton"].Instance.Text = "[None]"
-                    else
-                        local KeyString = Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
-                        local TextToDisplay = "["..StringGSub(StringGSub(tostring(KeyString), "KeyCode.", ""), "UserInputType.", "").."]"
-
-                        Keybind.Value = TextToDisplay
-                        Items["KeyButton"].Instance.Text = TextToDisplay
-                    end
-
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
-                    end
-
-                    Update()
-                elseif TableFind({"Toggle", "Hold", "Always On"}, Key) then
-                    Modes[Key]:Toggle()
-                    Keybind:SetMode(Key)
-
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
-                    end
-
-                    Update()
+                if type(Key) == "table" then
+                    TargetKey = Key.Key
+                    TargetMode = Key.Mode or TargetMode
                 end
 
+                if TableFind({"Toggle", "Hold", "Always On"}, TargetKey) then
+                    TargetMode = TargetKey
+                    TargetKey = Keybind.Key
+                end
+
+                if Modes[TargetMode] then
+                    Modes[TargetMode]:Toggle()
+                    Keybind:SetMode(TargetMode)
+                end
+
+                if IsInvalid(TargetKey) then
+                    Keybind.Key = "None"
+                    Keybind.Value = "[NONE]"
+                    Items["KeyButton"].Instance.Text = "[NONE]"
+                else
+                    Keybind.Key = tostring(TargetKey)
+
+                    local CleanName = StringGSub(tostring(TargetKey), "Enum%.KeyCode%.", "")
+                    CleanName = StringGSub(CleanName, "Enum%.UserInputType%.", "")
+                    local KeyString = Keys[Keybind.Key] or Keys[CleanName] or CleanName
+
+                    local TextToDisplay = "[" .. tostring(KeyString) .. "]"
+                    Keybind.Value = TextToDisplay
+                    Items["KeyButton"].Instance.Text = TextToDisplay
+                end
+
+                Library.Flags[Keybind.Flag] = {
+                    Mode = Keybind.Mode,
+                    Key = Keybind.Key,
+                    Toggled = Keybind.Toggled
+                }
+
+                if Data.Callback then 
+                    Library:SafeCall(Data.Callback, Keybind.Toggled)
+                end
+
+                Update()
                 Keybind.Picking = false
             end
 
@@ -1967,11 +1953,11 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if Keybind.Key == "None" or Keybind.Key == "Enum.KeyCode.Unknown" or Keybind.Key == "" then
+                if IsInvalid(Keybind.Key) then
                     return
                 end
 
-                if tostring(Input.KeyCode) == Keybind.Key then
+                if Input.KeyCode ~= Enum.KeyCode.Unknown and tostring(Input.KeyCode) == Keybind.Key then
                     if Keybind.Mode == "Toggle" then 
                         Keybind:Press()
                     elseif Keybind.Mode == "Hold" then 
@@ -1979,7 +1965,7 @@ local Library do
                     elseif Keybind.Mode == "Always On" then 
                         Keybind:Press(true)
                     end
-                elseif tostring(Input.UserInputType) == Keybind.Key then
+                elseif Input.UserInputType ~= Enum.UserInputType.None and tostring(Input.UserInputType) == Keybind.Key then
                     if Keybind.Mode == "Toggle" then 
                         Keybind:Press()
                     elseif Keybind.Mode == "Hold" then 
@@ -2003,17 +1989,17 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputEnded, function(Input)
-                if Keybind.Key == "None" or Keybind.Key == "Enum.KeyCode.Unknown" or Keybind.Key == "" then
+                if IsInvalid(Keybind.Key) then
                     return
                 end
 
-                if tostring(Input.KeyCode) == Keybind.Key then
+                if Input.KeyCode ~= Enum.KeyCode.Unknown and tostring(Input.KeyCode) == Keybind.Key then
                     if Keybind.Mode == "Hold" then 
                         Keybind:Press(false)
                     elseif Keybind.Mode == "Always On" then 
                         Keybind:Press(true)
                     end
-                elseif tostring(Input.UserInputType) == Keybind.Key then
+                elseif Input.UserInputType ~= Enum.UserInputType.None and tostring(Input.UserInputType) == Keybind.Key then
                     if Keybind.Mode == "Hold" then 
                         Keybind:Press(false)
                     elseif Keybind.Mode == "Always On" then 
