@@ -1543,12 +1543,18 @@ local Library do
         end
 
         Library.CreateKeybind = function(self, Data)
+            local function IsInvalidKey(k)
+                if not k then return true end
+                local str = tostring(k)
+                return str == "" or str == "None" or str == "[None]" or str == "Unknown" or str == "[Unknown]" or str:find("Unknown") ~= nil or str:find("Backspace") ~= nil
+            end
+
             local Keybind = {
                 Flag = Data.Flag,
 
-                Key = "",
-                Value = "",
-                Mode = "",
+                Key = "None",
+                Value = "[NONE]",
+                Mode = Data.Mode or "Toggle",
 
                 Toggled = false,
                 IsOpen = false,
@@ -1608,8 +1614,10 @@ local Library do
             local Modes = { }
 
             local Update = function()
-                KeyListItem:SetText(Data.Name, Keybind.Mode)
-                KeyListItem:Set(Keybind.Toggled)
+                if KeyListItem then
+                    KeyListItem:SetText(Data.Name, Keybind.Mode)
+                    KeyListItem:Set(Keybind.Toggled)
+                end
             end
 
             function Keybind:SetMode(Mode)
@@ -1621,14 +1629,14 @@ local Library do
                     Toggled = Keybind.Toggled
                 }
 
-                if Data.Callback then 
+                if Data.Callback and not IsInvalidKey(Keybind.Key) then 
                     Library:SafeCall(Data.Callback, Keybind.Toggled)
                 end
 
                 Update()
             end
 
-            local AddMode = function(Name) -- yo no problem
+            local AddMode = function(Name)
                 local ModeItems = { }
 
                 ModeItems[Name] = Instances:Create("TextButton", {
@@ -1646,7 +1654,7 @@ local Library do
                     BackgroundColor3 = FromRGB(255, 255, 255)
                 })
 
-                local ModeButton = ModeItems[Name] -- i haev to do this idk why
+                local ModeButton = ModeItems[Name]
                 
                 ModeItems["Accent1"] = Instances:Create("Frame", {
                     Parent = ModeItems[Name].Instance,
@@ -1741,10 +1749,8 @@ local Library do
 
             local IsClipped = function(Object, Column)
                 local Parent = Column
-                
                 local BoundryTop = Parent.AbsolutePosition
                 local BoundryBottom = BoundryTop + Parent.AbsoluteSize
-
                 local Top = Object.AbsolutePosition
                 local Bottom = Top + Object.AbsoluteSize 
 
@@ -1766,12 +1772,6 @@ local Library do
                 return Keybind.Key, Keybind.Mode, Keybind.Toggled
             end
 
-            local function IsInvalid(k)
-                if not k then return true end
-                local str = tostring(k)
-                return str == "" or str == "None" or str == "[None]" or str == "Unknown" or str == "[Unknown]" or StringFind(str, "Unknown") ~= nil or StringFind(str, "Backspace") ~= nil
-            end
-
             function Keybind:Set(Key)
                 local TargetKey = Key
                 local TargetMode = Keybind.Mode ~= "" and Keybind.Mode or "Toggle"
@@ -1791,13 +1791,13 @@ local Library do
                     Keybind:SetMode(TargetMode)
                 end
 
-                if IsInvalid(TargetKey) then
+                if IsInvalidKey(TargetKey) then
                     Keybind.Key = "None"
                     Keybind.Value = "[NONE]"
+                    Keybind.Toggled = false
                     Items["KeyButton"].Instance.Text = "[NONE]"
                 else
                     Keybind.Key = tostring(TargetKey)
-
                     local CleanName = StringGSub(tostring(TargetKey), "Enum%.KeyCode%.", "")
                     CleanName = StringGSub(CleanName, "Enum%.UserInputType%.", "")
                     local KeyString = Keys[Keybind.Key] or Keys[CleanName] or CleanName
@@ -1813,10 +1813,6 @@ local Library do
                     Toggled = Keybind.Toggled
                 }
 
-                if Data.Callback then 
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
-                end
-
                 Update()
                 Keybind.Picking = false
             end
@@ -1830,7 +1826,6 @@ local Library do
                 end
 
                 Keybind.IsOpen = Bool
-
                 Debounce = true 
 
                 if Keybind.IsOpen then 
@@ -1866,7 +1861,6 @@ local Library do
                 TableInsert(Descendants, Items["KeybindWindow"].Instance)
 
                 local NewTween
-
                 for Index, Value in Descendants do 
                     local TransparencyProperty = Tween:GetProperty(Value)
 
@@ -1892,6 +1886,11 @@ local Library do
             end
 
             function Keybind:Press(Bool)
+                -- SAFETY LOCK: Cannot press if unset or Unknown
+                if IsInvalidKey(Keybind.Key) then
+                    return
+                end
+
                 if Keybind.Mode == "Toggle" then 
                     Keybind.Toggled = not Keybind.Toggled
                 elseif Keybind.Mode == "Hold" then 
@@ -1915,31 +1914,30 @@ local Library do
 
             Items["KeyButton"]:Connect("MouseButton1Click", function()
                 Keybind.Picking = true 
-
                 Items["KeyButton"].Instance.Text = "."
+                
                 Library:Thread(function()
                     local Count = 1
-
-                    while true do 
-                        if not Keybind.Picking then 
-                            break
-                        end
-
-                        if Count == 4 then
-                            Count = 1
-                        end
-
+                    while Keybind.Picking do 
+                        if Count == 4 then Count = 1 end
                         Items["KeyButton"].Instance.Text = Count == 1 and "." or Count == 2 and ".." or Count == 3 and "..."
                         Count += 1
                         task.wait(0.35)
                     end
                 end)
 
+                task.wait(0.1)
                 local InputBegan
                 InputBegan = UserInputService.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.Keyboard then 
-                        Keybind:Set(Input.KeyCode)
-                    else
+                    if Input.UserInputType == Enum.UserInputType.Keyboard then
+                        if Input.KeyCode == Enum.KeyCode.Backspace or Input.KeyCode == Enum.KeyCode.Unknown then
+                            Keybind:Set("None")
+                        else
+                            Keybind:Set(Input.KeyCode)
+                        end
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton1 
+                        or Input.UserInputType == Enum.UserInputType.MouseButton2 
+                        or Input.UserInputType == Enum.UserInputType.MouseButton3 then
                         Keybind:Set(Input.UserInputType)
                     end
 
@@ -1953,7 +1951,7 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if IsInvalid(Keybind.Key) then
+                if IsInvalidKey(Keybind.Key) then
                     return
                 end
 
@@ -1989,7 +1987,7 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputEnded, function(Input)
-                if IsInvalid(Keybind.Key) then
+                if IsInvalidKey(Keybind.Key) then
                     return
                 end
 
@@ -2008,11 +2006,13 @@ local Library do
                 end
             end)
 
-            if Data.Default then 
+            if Data.Default and not IsInvalidKey(Data.Default) then 
                 Keybind:Set({
                     Mode = Data.Mode or "Toggle",
                     Key = Data.Default,
                 })
+            else
+                Keybind:Set("None")
             end
 
             Library.SetFlags[Keybind.Flag] = function(Value)
