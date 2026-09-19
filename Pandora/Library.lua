@@ -1963,8 +1963,9 @@ local Library do
                     elseif Keybind.Mode == "Always On" then 
                         Keybind:Press(true)
                     end
-                elseif Input.UserInputType ~= Enum.UserInputType.None and tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Toggle" then 
+                elseif Input.UserInputType ~= Enum.UserInputType.None and tostring(Input.UserInputType) == Keybind.Key and Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    print(Input.UserInputType, Input.KeyCode)
+					if Keybind.Mode == "Toggle" then 
                         Keybind:Press()
                     elseif Keybind.Mode == "Hold" then 
                         Keybind:Press(true)
