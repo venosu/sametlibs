@@ -4337,42 +4337,55 @@ local Library do
                         return
                     end
 
-                    Dropdown.Value = Option
-                    Library.Flags[Dropdown.Flag] = Option
+                    Dropdown.Value = TableClone(Option)
+                    Library.Flags[Dropdown.Flag] = Dropdown.Value
 
-                    for Index, Value in Option do
-                        local OptionData = Dropdown.Options[Value]
-                        
-                        if not OptionData then
-                            continue
-                        end
-
-                        OptionData.Selected = true 
-                        OptionData:Toggle("Active")
+                    -- 1. Reset all options first
+                    for _, OptionData in Dropdown.Options do
+                        OptionData.Selected = false
+                        OptionData:Toggle("Inactive")
                     end
 
-                    Items["Value"].Instance.Text = TableConcat(Option, ", ")
+                    -- 2. Activate only the new options
+                    for _, Value in Dropdown.Value do
+                        local OptionData = Dropdown.Options[Value]
+                        if OptionData then
+                            OptionData.Selected = true 
+                            OptionData:Toggle("Active")
+                        end
+                    end
+
+                    local TextFormat = #Dropdown.Value > 0 and TableConcat(Dropdown.Value, ", ") or "--"
+                    Items["Value"].Instance.Text = TextFormat
                 else
                     if not Dropdown.Options[Option] then
-                        return
-                    end
+                        Dropdown.Value = nil
+                        Library.Flags[Dropdown.Flag] = nil
 
-                    local OptionData = Dropdown.Options[Option]
-
-                    Dropdown.Value = Option
-                    Library.Flags[Dropdown.Flag] = Option
-
-                    for Index, Value in Dropdown.Options do
-                        if Value ~= OptionData then
+                        for _, Value in Dropdown.Options do 
                             Value.Selected = false 
                             Value:Toggle("Inactive")
-                        else
-                            Value.Selected = true 
-                            Value:Toggle("Active")
                         end
-                    end
 
-                    Items["Value"].Instance.Text = Option
+                        Items["Value"].Instance.Text = "--"
+                    else
+                        local OptionData = Dropdown.Options[Option]
+
+                        Dropdown.Value = Option
+                        Library.Flags[Dropdown.Flag] = Option
+
+                        for _, Value in Dropdown.Options do
+                            if Value ~= OptionData then
+                                Value.Selected = false 
+                                Value:Toggle("Inactive")
+                            else
+                                Value.Selected = true 
+                                Value:Toggle("Active")
+                            end
+                        end
+
+                        Items["Value"].Instance.Text = Option
+                    end
                 end
 
                 if Dropdown.Callback then   
