@@ -1768,15 +1768,19 @@ local Library do
 
             function Keybind:Set(Key)
                 if StringFind(tostring(Key), "Enum") then 
-                    Keybind.Key = tostring(Key)
+                    if Key.Name == "Backspace" or Key.Name == "Unknown" then
+                        Keybind.Key = "None"
+                        Keybind.Value = "[None]"
+                        Items["KeyButton"].Instance.Text = "[None]"
+                    else
+                        Keybind.Key = tostring(Key)
 
-                    Key = Key.Name == "Backspace" and "None" or Key.Name
+                        local KeyString = Keys[Keybind.Key] or StringGSub(Key.Name, "Enum.", "") or "None"
+                        local TextToDisplay = "["..StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "").."]"
 
-                    local KeyString = Keys[Keybind.Key] or StringGSub(Key, "Enum.", "") or "None"
-                    local TextToDisplay = "["..StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "").."]" or "[None]"
-
-                    Keybind.Value = TextToDisplay
-                    Items["KeyButton"].Instance.Text = TextToDisplay
+                        Keybind.Value = TextToDisplay
+                        Items["KeyButton"].Instance.Text = TextToDisplay
+                    end
 
                     Library.Flags[Keybind.Flag] = {
                         Mode = Keybind.Mode,
@@ -1790,8 +1794,8 @@ local Library do
 
                     Update()
                 elseif type(Key) == "table" then
-                    local RealKey = Key.Key == "Backspace" and "None" or Key.Key
-                    Keybind.Key = tostring(Key.Key)
+                    local RealKey = (Key.Key == "Backspace" or Key.Key == "Unknown" or Key.Key == "Enum.KeyCode.Unknown" or Key.Key == "None") and "None" or Key.Key
+                    Keybind.Key = (RealKey == "None") and "None" or tostring(Key.Key)
 
                     if Key.Mode then
                         Modes[Key.Mode]:Toggle()
@@ -1801,13 +1805,16 @@ local Library do
                         Keybind:SetMode("Toggle")
                     end
 
-                    local KeyString = Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
-                    local TextToDisplay = KeyString and StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "") or "[None]"
+                    if Keybind.Key == "None" then
+                        Keybind.Value = "[None]"
+                        Items["KeyButton"].Instance.Text = "[None]"
+                    else
+                        local KeyString = Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
+                        local TextToDisplay = "["..StringGSub(StringGSub(tostring(KeyString), "KeyCode.", ""), "UserInputType.", "").."]"
 
-                    TextToDisplay = "["..StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "").."]"
-
-                    Keybind.Value = TextToDisplay
-                    Items["KeyButton"].Instance.Text = TextToDisplay
+                        Keybind.Value = TextToDisplay
+                        Items["KeyButton"].Instance.Text = TextToDisplay
+                    end
 
                     if Data.Callback then 
                         Library:SafeCall(Data.Callback, Keybind.Toggled)
@@ -1960,7 +1967,7 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if Keybind.Value == "None" then
+                if Keybind.Key == "None" or Keybind.Key == "Enum.KeyCode.Unknown" or Keybind.Key == "" then
                     return
                 end
 
@@ -1996,7 +2003,7 @@ local Library do
             end)
 
             Library:Connect(UserInputService.InputEnded, function(Input)
-                if Keybind.Value == "None" then
+                if Keybind.Key == "None" or Keybind.Key == "Enum.KeyCode.Unknown" or Keybind.Key == "" then
                     return
                 end
 
