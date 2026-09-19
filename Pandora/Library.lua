@@ -23,7 +23,7 @@ local Library do
 
     local LocalPlayer = Players.LocalPlayer
     --local Camera = Workspace.CurrentCamera
-    local Mouse = LocalPlayer:GetMouse()
+    local Mouse = cloneref(LocalPlayer:GetMouse())
 
     local FromRGB = Color3.fromRGB
     local FromHSV = Color3.fromHSV
